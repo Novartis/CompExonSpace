@@ -1,0 +1,255 @@
+
+
+```{r}
+
+library(ggplot2)
+
+agaCounts <- 
+  read.delim(
+    file.path(Sys.getenv("MYDATA"), "psi_pergasplicesite", "counts_aga5ss.txt"))
+
+agaCounts$condition <- gsub("_R\\d$", "", agaCounts$sample)
+
+quantitativeAnalysis <- function( inputDf, tstCondition, ctlCondition, fctVar, minCount, xlab, ylab ){
+    allCounts <- inputDf |>
+        dplyr::filter( condition %in% c( tstCondition, ctlCondition ) )
+    meanVals <- allCounts |>
+        dplyr::group_by( exonCoords ) |>
+        dplyr::summarize( meanInclusion=mean(inclusion), meanExclusion=mean(exclusion), meanPsi=mean(psi) )
+    psiPerCondition <- allCounts |>
+        dplyr::group_by( exonCoords, condition ) |>
+        dplyr::summarize( psi=mean(psi) ) |>
+        tidyr::pivot_wider( names_from="condition", values_from="psi" )
+    psiPerCondition <- psiPerCondition |>
+        dplyr::left_join( unique(allCounts[,c("exonCoords", fctVar)]) )
+    expressedInCtrl <- meanVals$exonCoords[meanVals$meanExclusion > minCount]
+    labDf <- psiPerCondition |>
+        dplyr::filter( exonCoords %in% expressedInCtrl ) |> ##, get(tstCondition) > 0 | get(ctlCondition) > 0) |>
+        dplyr::mutate( dPSI=get(tstCondition)-get(ctlCondition)) |>
+        dplyr::group_by( get(fctVar) ) |>
+        dplyr::summarize( meanDPSI=mean(dPSI, na.rm=TRUE) )
+    labDf[[fctVar]] <- labDf[["get(fctVar)"]]
+    labDf[[ctlCondition]] <- 0.75
+    labDf[[tstCondition]] <- 0.1
+    labDf$lab <- with(labDf, Map(function(v) bquote(bar(Delta * Psi) == .(v)), round(meanDPSI, 4)))
+    pl <- psiPerCondition |>
+        dplyr::filter( exonCoords %in% expressedInCtrl ) |>
+        ggplot( aes( get(ctlCondition), get(tstCondition) ) )  +
+        geom_point( alpha=0.3 ) +
+        geom_text( aes(label = lab), data=labDf, parse=TRUE) +
+        facet_wrap( ~ get(fctVar) ) +
+        coord_fixed(ratio=1) +
+        geom_abline(col="red") +
+        labs(x=xlab, y=ylab)
+    pl
+}
+
+agaCounts$exonEnd <- gsub("T", "U", agaCounts$exonEnd)
+
+agaCounts$exon3End <- substr(agaCounts$exonEnd, 2, 4)
+agaCounts$exon3End <- factor(agaCounts$exon3End, levels=c("AGA", "UGA", "GGA", "CGA"))
+
+
+```
+
+## Influence of -3 position
+
+```{r}
+
+pl <- quantitativeAnalysis(
+    inputDf=agaCounts,
+    tstCondition="SHS_LMI070-25nM",
+    ctlCondition="SHS_DMSO",
+    fctVar="exon3End",
+    minCount=4,
+    ylab="LMI070-25nM",
+    xlab="DMSO" )
+
+##png("figures/scatterplot_quantan_LMI070_25nM.png", height=5, width=6, unit="in", res=300)
+print( pl )
+##dev.off()
+
+pl <- quantitativeAnalysis(
+    inputDf=agaCounts,
+    tstCondition="SHS_LMI070-100nM",
+    ctlCondition="SHS_DMSO",
+    fctVar="exon3End",
+    minCount=4,
+    ylab="LMI070-100nM",
+    xlab="DMSO" )
+
+##png("figures/scatterplot_quantan_LMI070_100nM.png", height=5, width=6, unit="in", res=300)
+print( pl )
+##dev.off()
+
+pl <- quantitativeAnalysis(
+    inputDf=agaCounts,
+    tstCondition="SHS_EJZ908-655nM",
+    ctlCondition="SHS_DMSO",
+    fctVar="exon3End",
+    minCount=4,
+    ylab="EJZ908-655nM",
+    xlab="DMSO" )
+
+##png("figures/scatterplot_quantan_EJZ908_655nM.png", height=5, width=6, unit="in", res=300)
+print( pl )
+##dev.off()
+
+```
+
+## Influence of -4 position for AGA exons
+
+```{r}
+
+agaCountsSub <- agaCounts[agaCounts$exon3End == "AGA",]
+agaCountsSub$exonEnd2 <- relevel(factor(ifelse( agaCountsSub$exonEnd == "AAGA", "AAGA", "(C|G|U)AGA")), "AAGA")
+
+pl <- quantitativeAnalysis(
+    inputDf=agaCountsSub,
+    tstCondition="SHS_LMI070-25nM",
+    ctlCondition="SHS_DMSO",
+    fctVar="exonEnd2",
+    minCount=4,
+    ylab="LMI070-25nM",
+    xlab="DMSO" )
+
+##png("figures/scatterplot_quantan_4pos_LMI070_25nM.png", height=3.5, width=6, unit="in", res=300)
+print( pl )
+##dev.off()
+
+pl <- quantitativeAnalysis(
+    inputDf=agaCountsSub,
+    tstCondition="SHS_LMI070-100nM",
+    ctlCondition="SHS_DMSO",
+    fctVar="exonEnd2",
+    minCount=4,
+    ylab="LMI070-100nM",
+    xlab="DMSO" )
+
+##png("figures/scatterplot_quantan_4pos_LMI070_100nM.png", height=3.5, width=6, unit="in", res=300)
+print( pl )
+##dev.off()
+
+pl <- quantitativeAnalysis(
+    inputDf=agaCountsSub,
+    tstCondition="SHS_EJZ908-655nM",
+    ctlCondition="SHS_DMSO",
+    fctVar="exonEnd2",
+    minCount=4,
+    ylab="EJZ908-655nM",
+    xlab="DMSO" )
+
+##png("figures/scatterplot_quantan_4pos_EJZ908_655nM.png", height=3.5, width=6, unit="in", res=300)
+print( pl )
+##dev.off()
+
+```
+
+## Influence of -4 position for NGA exons
+
+```{r}
+
+agaCountsSub <- agaCounts[agaCounts$exon3End != "AGA",]
+
+agaCountsSub$exonEnd2 <- gsub("UGA$|CGA$|GGA$", "(U|C|G)GA", agaCountsSub$exonEnd)
+
+agaCountsSub$exonEnd2 <- relevel(factor(ifelse( agaCountsSub$exonEnd2 == "A(U|C|G)GA", "A(U|C|G)GA", "(U|C|G)(U|C|G)GA")), "A(U|C|G)GA")
+
+pl <- quantitativeAnalysis(
+    inputDf=agaCountsSub,
+    tstCondition="SHS_LMI070-25nM",
+    ctlCondition="SHS_DMSO",
+    fctVar="exonEnd2",
+    minCount=4,
+    ylab="LMI070-25nM",
+    xlab="DMSO" )
+
+##png("figures/scatterplot_quantan_4pos_nga_LMI070_25nM.png", height=3.5, width=6, unit="in", res=300)
+print( pl )
+##dev.off()
+
+pl <- quantitativeAnalysis(
+    inputDf=agaCountsSub,
+    tstCondition="SHS_LMI070-100nM",
+    ctlCondition="SHS_DMSO",
+    fctVar="exonEnd2",
+    minCount=4,
+    ylab="LMI070-100nM",
+    xlab="DMSO" )
+
+##png("figures/scatterplot_quantan_4pos_nga_LMI070_100nM.png", height=3.5, width=6, unit="in", res=300)
+print( pl )
+##dev.off()
+
+pl <- quantitativeAnalysis(
+    inputDf=agaCountsSub,
+    tstCondition="SHS_EJZ908-655nM",
+    ctlCondition="SHS_DMSO",
+    fctVar="exonEnd2",
+    minCount=4,
+    ylab="EJZ908-655nM",
+    xlab="DMSO" )
+
+##png("figures/scatterplot_quantan_4pos_nga_EJZ908_655nM.png", height=3.5, width=6, unit="in", res=300)
+print( pl )
+##dev.off()
+
+```
+
+## U1 data
+
+```{r}
+
+pl <- quantitativeAnalysis(
+    inputDf=agaCounts,
+    tstCondition="HeLa_U1ga",
+    ctlCondition="HeLa_U1ag",
+    fctVar="exon3End",
+    minCount=4,
+    ylab=expression("U1-"*C[-2]*U[-1]),
+    xlab="U1-canonical" )
+
+##png("figures/scatterplot_quantan_U1C-2U-1.png", height=5, width=6, unit="in", res=300)
+print( pl )
+##dev.off()
+
+```
+
+```{r}
+
+agaCountsSub <- agaCounts[agaCounts$exon3End == "AGA",]
+
+agaCountsSub$intronMut <- ifelse(
+    substr(agaCountsSub$intronStart, 6, 6) == "C" | substr(agaCountsSub$intronStart, 7, 7) == "G",
+    "C6|G7", "other")
+
+
+
+pl <- quantitativeAnalysis(
+    inputDf=agaCountsSub,
+    tstCondition="HeLa_LMI070+U16C7G",
+    ctlCondition="HeLa_LMI070+U1ag",
+    fctVar="intronMut",
+    minCount=4,
+    ylab=expression("LMI070 + U1-"*C[6]*G[7]),
+    xlab="LMI070 + U1-canonical" )
+
+##png("figures/scatterplot_quantan_intronmut_LMI070.png", height=3.5, width=6, unit="in", res=300)
+print( pl )
+##dev.off()
+
+pl <- quantitativeAnalysis(
+    inputDf=agaCountsSub,
+    tstCondition="HeLa_EJZ908+U16C7G",
+    ctlCondition="HeLa_EJZ908+U1ag",
+    fctVar="intronMut",
+    minCount=4,
+    ylab=expression("EJZ908 + U1-"*C[6]*G[7]),
+    xlab="EJZ908 + U1-canonical" )
+
+##png("figures/scatterplot_quantan_intronmut_EJZ908.png", height=3.5, width=6, unit="in", res=300)
+print( pl )
+##dev.off()
+
+
+```

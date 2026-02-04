@@ -1,0 +1,75 @@
+
+
+```{r}
+# Load required packages
+library(dplyr)
+library(readr)
+library(stringr)
+library(purrr)
+library(GGally)
+library(ggplot2)
+library(tidyr)
+```
+
+
+```{r}
+# Directory with all per‑sample PSI files
+psi_dir <- file.path(Sys.getenv("MYDATA"), "psi_persample")
+
+# Function to load data and generate plots for sample correlation
+make_psi_plot <- function(filepath) {
+  
+  # Get sample name from filename
+  sample_name <- filepath %>%
+    basename() %>%
+    str_remove("^psi_") %>%
+    str_remove("\\.csv$")
+  
+  # Finallz really load file
+  df <- read_csv(filepath, show_col_types = FALSE)
+  
+  # remove rows where all replicates are NA
+  df_clean <- df %>%
+    filter(!(is.na(PSI_R1) & is.na(PSI_R2) & is.na(PSI_R3))) %>%
+    drop_na(PSI_R1, PSI_R2, PSI_R3)
+  
+  # Build correlation plot
+  p <- ggpairs(
+    df_clean,
+    columns = 2:4,   # PSI_R1, PSI_R2, PSI_R3
+    title = paste0(sample_name, " replicate PSI correlations"),
+    lower = list(continuous = wrap("points", alpha = 0.15, size = 0.6)),
+    upper = list(continuous = wrap("cor", size = 5)),
+    diag  = list(continuous = wrap("densityDiag"))
+  ) +
+    theme_bw(base_size = 14) +
+    theme(
+      plot.title = element_text(hjust = 0.5, face = "bold")
+    )
+  
+  p
+}
+
+
+# Identify all files and generate plots
+psi_files <- list.files(
+  psi_dir,
+  pattern = "^psi_.*\\.csv$",
+  full.names = TRUE
+)
+
+psi_plots <- map(psi_files, make_psi_plot)
+
+# Name list entries by sample name
+names(psi_plots) <- psi_files %>%
+  basename() %>%
+  str_remove("^psi_") %>%
+  str_remove("\\.csv$")
+
+
+# Access a specific plot (example)
+psi_plots
+
+
+```
+

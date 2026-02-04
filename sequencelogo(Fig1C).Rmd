@@ -1,0 +1,57 @@
+
+```{r}
+#load libraries
+library(dplyr) 
+library(Biostrings) 
+library(ggseqlogo) 
+library(ggplot2)
+
+# Define paths
+data_dir <- file.path(Sys.getenv("MYDATA"), "exon_diff")
+
+```
+
+
+```{r}
+
+#function to load data (differential analysis)
+load_exon_data <- function(filename) {
+  read.csv(file.path(data_dir, filename), stringsAsFactors = FALSE)
+}
+
+# Extract U1-binding sequences for included exons
+extract_u1_sequences <- function(df) {
+  df %>%
+    filter(included == "yes") %>%
+    mutate(U1binding = gsub("T", "U", U1binding)) %>%
+    pull(U1binding) %>%
+    as.vector()
+}
+
+# Function to generate sequence logo
+plot_seqlogo <- function(seqs, title = NULL) {
+  ggseqlogo(seqs) +
+    ggtitle(title) +
+    theme_minimal() +
+    theme(
+      plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+      panel.grid = element_blank()
+    )
+}
+
+# Load datasets
+NVSSM1_25nM      <- load_exon_data("Exp1_NVSSM1_25nM_vs_DMSO.csv")
+Risdiplam_655nM  <- load_exon_data("Exp1_Ris_655nM_vs_DMSO.csv")
+
+# Get U1 binding site sequences (-4 position to +8)
+NVSSM1_25nM_incl_seqs     <- extract_u1_sequences(NVSSM1_25nM)
+Risdiplam_655nM_incl_seqs <- extract_u1_sequences(Risdiplam_655nM)
+
+# Plot sequence logos 
+plot_seqlogo(NVSSM1_25nM_incl_seqs, "NVSSM1 25 nM – Included Exons")
+plot_seqlogo(Risdiplam_655nM_incl_seqs, "Risdiplam 655 nM – Included Exons")
+
+
+```
+
+

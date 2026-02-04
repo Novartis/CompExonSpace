@@ -1,0 +1,62 @@
+```{r}
+library(dplyr)
+library(ggplot2)
+library(ggpubr)
+library(scales)
+```
+
+
+```{r}
+# Define paths
+data_dir <- Sys.getenv("MYDATA")
+
+# function to load data
+load_csv <- function(filename) {
+  read.csv(file.path(data_dir, "exon_diff", filename), stringsAsFactors = FALSE)
+}
+
+# Load datasets
+NVS <- load_csv("Exp1_NVSSM1_25nM_vs_DMSO.csv")
+
+```
+
+
+```{r}
+NVS_AGA <- NVS %>%
+  dplyr::filter(Exon3 == "AGA") %>%
+  dplyr::filter(included == "yes") %>%
+  dplyr::mutate(
+    group = ifelse(Exon4 == "CAGA", "CAGA", "Other"))
+
+my_comparisons <- list(c("Other", "CAGA"))
+
+p <- ggplot(NVS_AGA,
+            aes(x = group, y = HbondIntron, fill = group)) +
+  
+  # Violin
+  geom_violin(trim = FALSE, alpha = 0.7, width = 1, color = "black") +
+  
+  # Dots on top
+  geom_jitter(width = 0.12, size = 1.8, alpha = 0.8, color = "black") +
+  
+  scale_fill_manual(values = c("Other" = "grey70", "CAGA" = "grey40")) +
+  
+  labs(
+    x = "",
+    y = "Complementarity score",
+    title = "Exp1 NVSSM1 25 nM: CAGA vs all other AGA exons"
+  ) +
+  
+  theme_classic(base_size = 14) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    axis.text = element_text(color = "black"),
+    axis.line = element_line(color = "black"),
+    axis.ticks = element_line(color = "black")
+  ) 
+p
+
+
+
+```

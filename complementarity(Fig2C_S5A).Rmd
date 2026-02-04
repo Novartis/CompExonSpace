@@ -1,0 +1,153 @@
+
+
+```{r}
+# Load libraries
+library(dplyr)
+library(ggplot2)
+library(ggpubr)
+library(stringr)
+```
+
+```{r}
+# Define paths
+data_dir <- Sys.getenv("MYDATA")
+
+# function to load data (differential data with complementarity info)
+load_csv <- function(filename) {
+  read.csv(file.path(data_dir, "exon_diff", filename), stringsAsFactors = FALSE)
+}
+
+# Load datasets
+SM1_25     <- load_csv("Exp1_NVSSM1_25nM_vs_DMSO.csv")
+Ris_655    <- load_csv("Exp1_Ris_655nM_vs_DMSO.csv")
+Candidates <- load_csv("CandidatesGA.csv")
+
+```
+Plot for NVS-SM1
+```{r}
+# Filter for induced AGA exons (keep complementarity info)
+SM1_AGA <- SM1_25 %>%
+  dplyr::filter(Exon3 == "AGA") %>%
+  dplyr::filter(included == "yes") %>%
+  dplyr::select(ExonEndID, HbondBulgeGA) %>%
+  dplyr::mutate(appearance = "included AGA Exons")
+
+# AGA candidate exons (not included)
+CandidatesAGA <- Candidates %>%
+  dplyr::filter(Exon3 == "AGA") %>%
+  dplyr::filter(!ExonEndID %in% SM1_AGA$ExonEndID) %>%
+  dplyr::select(ExonEndID, HbondBulgeGA) %>%
+  dplyr::mutate(appearance = "AGA Candidates")
+
+# Combine datasets
+CompareInclVsNot <- bind_rows(CandidatesAGA, SM1_AGA) %>%
+  mutate(HbondBulgeGA = as.numeric(HbondBulgeGA))
+
+# Plot (violin plot)
+my_comparisons <- list(c("AGA Candidates", "included AGA Exons"))
+
+p <- ggplot(CompareInclVsNot,
+            aes(x = appearance, y = HbondBulgeGA, fill = appearance)) +
+  geom_violin(trim = FALSE, alpha = 0.7, width = 1, color = "black") +
+  geom_boxplot(width = 0.12, fill = "white", outlier.shape = NA, color = "black") +
+  scale_fill_manual(values = c("AGA Candidates" = "grey70",
+                               "included AGA Exons" = "grey40")) +
+  labs(
+    y = "Complementarity score",
+    title = "Exp1 NVSSM1 25 nM: Included AGA exons vs non-included candidates"
+  ) +
+  theme_classic(base_size = 14) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    axis.title.x = element_blank(),
+    axis.text = element_text(color = "black"),
+    axis.line = element_line(color = "black"),
+    axis.ticks = element_line(color = "black")
+  ) +
+  
+  # p-value with label
+  stat_compare_means(
+    comparisons = my_comparisons,
+    method = "wilcox.test",
+    aes(label = paste0("p val = ", ..p.format..)),
+    label.y = max(CompareInclVsNot$HbondBulgeGA, na.rm = TRUE) * 1.05
+  ) +
+  
+  # significance stars
+  stat_compare_means(
+    comparisons = my_comparisons,
+    method = "wilcox.test",
+    label = "p.signif",
+    label.y = max(CompareInclVsNot$HbondBulgeGA, na.rm = TRUE) * 1.15
+  )
+
+p
+
+
+```
+
+Plot for Risdiplam
+```{r}
+# Filter for induced AGA exons (keep complementarity info)
+Ris_GA <- Ris_655 %>%
+  dplyr::filter(str_ends(Exon3, "GA")) %>%
+  dplyr::filter(included == "yes") %>%
+  dplyr::select(ExonEndID, HbondBulgeGA) %>%
+  dplyr::mutate(appearance = "included GA Exons")
+
+# AGA candidate exons (not included)
+CandidatesGA <- Candidates %>%
+  dplyr::filter(!ExonEndID %in% Ris_GA$ExonEndID) %>%
+  dplyr::select(ExonEndID, HbondBulgeGA) %>%
+  dplyr::mutate(appearance = "GA Candidates")
+
+# Combine datasets
+CompareInclVsNot <- bind_rows(CandidatesGA, Ris_GA) %>%
+  dplyr::mutate(HbondBulgeGA = as.numeric(HbondBulgeGA))
+
+# Plot (violin plot)
+my_comparisons <- list(c("GA Candidates", "included AGA Exons"))
+
+p <- ggplot(CompareInclVsNot,
+            aes(x = appearance, y = HbondBulgeGA, fill = appearance)) +
+  geom_violin(trim = FALSE, alpha = 0.7, width = 1, color = "black") +
+  geom_boxplot(width = 0.12, fill = "white", outlier.shape = NA, color = "black") +
+  scale_fill_manual(values = c("GA Candidates" = "grey70",
+                               "included GA Exons" = "grey40")) +
+  labs(
+    y = "Complementarity score",
+    title = "Exp1 NVSSM1 25 nM: Included GA exons vs non-included candidates"
+  ) +
+  theme_classic(base_size = 14) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    axis.title.x = element_blank(),
+    axis.text = element_text(color = "black"),
+    axis.line = element_line(color = "black"),
+    axis.ticks = element_line(color = "black")
+  ) +
+  
+  # p-value with label
+  stat_compare_means(
+    comparisons = my_comparisons,
+    method = "wilcox.test",
+    aes(label = paste0("p val = ", ..p.format..)),
+    label.y = max(CompareInclVsNot$HbondBulgeGA, na.rm = TRUE) * 1.05
+  ) +
+  
+  # significance stars
+  stat_compare_means(
+    comparisons = my_comparisons,
+    method = "wilcox.test",
+    label = "p.signif",
+    label.y = max(CompareInclVsNot$HbondBulgeGA, na.rm = TRUE) * 1.15
+  )
+
+p
+
+
+```
+
+

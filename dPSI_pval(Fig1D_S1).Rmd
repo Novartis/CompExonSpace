@@ -1,0 +1,63 @@
+
+```{r}
+# Load libraries
+library(ggplot2)
+library(readr)
+library(dplyr)
+
+# Define paths
+data_dir <- Sys.getenv("MYDATA")
+
+```
+
+```{r}
+
+# function to load data (differential analysis provided)
+load_exon_data <- function(filename) {
+  read_csv(file.path(data_dir, "exon_diff", filename), show_col_types = FALSE)
+}
+
+# function to generate volcano plot (pval vs dPSI)
+plot_volcano <- function(df, title) {
+  ggplot(df, aes(x = altsplice_delta_psi,
+                 y = -log10(altsplice_padj),
+                 color = included)) +
+    geom_point(alpha = 0.4) +
+    labs(
+      title = title,
+      x = "dPSI",
+      y = "-log10(p-value)"
+    ) +
+    ylim(0, 100) +
+    theme_minimal() +
+    theme(panel.grid = element_blank()) +
+    coord_fixed(ratio = 0.04)
+}
+
+# datasets 
+SM1_25   <- load_exon_data("Exp1_NVSSM1_25nM_vs_DMSO.csv")
+SM1_100  <- load_exon_data("Exp1_NVSSM1_100nM_vs_DMSO.csv")
+Ris_655  <- load_exon_data("Exp1_Ris_655nM_vs_DMSO.csv")
+Ris_1000 <- load_exon_data("Exp1_Ris_1uM_vs_DMSO.csv")
+neg      <- load_exon_data("Exp1_neg.ctrl_vs_DMSO.csv")
+
+NVS_mut  <- load_exon_data("Exp4_U1G6C7_NVSSM1_vs_U1G6C7.csv")
+Ris_mut  <- load_exon_data("Exp4_U1G6C7_Ris_vs_U1G6C7.csv")
+
+U1CU     <- load_exon_data("Exp3_U1CU_vs_U1wt.csv")
+
+
+# Print plots 
+plot_volcano(SM1_25,   "Exp1 NVSSM1 25 nM vs DMSO")
+plot_volcano(SM1_100,  "Exp1 NVSSM1 100 nM vs DMSO")
+plot_volcano(Ris_655,  "Exp1 Ris 655 nM vs DMSO")
+plot_volcano(Ris_1000, "Exp1 Ris 1 µM vs DMSO")
+plot_volcano(neg,      "Exp1 Negative Control")
+
+plot_volcano(NVS_mut,  "Exp4 NVSSM1 vs U1G6C7")
+plot_volcano(Ris_mut,  "Exp4 Ris vs U1G6C7")
+
+plot_volcano(U1CU,     "Exp3 U1CU vs U1wt")
+
+
+```
