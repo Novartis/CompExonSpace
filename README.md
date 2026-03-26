@@ -1,6 +1,6 @@
 # Specificity and exon target space of splicing modifying compounds — analysis code
 
-This repository contains the code used to analyze the data presented in the manuscript **"Specificity and exon target space of splicing modifying compounds"**.
+This repository contains the code used to analyze the data presented in the manuscript **"Specificity and exon target space of splicing modifying compounds"**. All the analyses presented in this repository are based on the human reference genome (GRCh38). 
 
 ## Data availability
 
