@@ -18,7 +18,6 @@ CompExonSpace/
 ├── SHAPanalysis.ipynb
 ├── ... (other R and Python analysis scripts)
 │
-├── renv/                      # R environment managed by renv
 ├── renv.lock                  # R package versions
 ├── environment.yml            # Python environment
 ├── README.md
