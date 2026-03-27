@@ -1,0 +1,22 @@
+name: comp-exon-space
+channels:
+  - conda-forge
+  - defaults
+
+dependencies:
+  - python=3.11
+  - numpy
+  - pandas
+  - matplotlib
+  - seaborn
+  - scikit-learn
+  - scipy
+  - shap
+  - xgboost
+  - jupyter
+  - ipykernel
+  - tqdm
+  - pip
+  - pip:
+      - scikit_learn
+
