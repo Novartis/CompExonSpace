@@ -1,7 +1,7 @@
 # CompExonSpace  
 Paper: Specificity and exon target space of splicing modifying compounds
 
-This repository contains all R and Python code used to perform the analyses and plot figures published in the manuscript 'Specificity and exon target space of splicing modifying compounds'.
+This repository contains all R and Python code used to perform the analyses and plot figures published in the manuscript 'Specificity and exon target space of splicing modifying compounds'. The reference genome used throughout all analyses is the assembly GRCh38 downloaded from ENSEMBL.
 
 To ensure reproducibility this project uses:
 
