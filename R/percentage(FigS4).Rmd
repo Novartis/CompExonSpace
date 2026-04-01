@@ -1,0 +1,107 @@
+
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(scales)
+```
+
+```{r}
+# Define paths
+data_dir <- Sys.getenv("MYDATA")
+
+# function to load data (differential data with complementarity info)
+load_csv <- function(filename) {
+  read.csv(file.path(data_dir, filename), stringsAsFactors = FALSE)
+}
+
+# Load datasets
+NVS     <- read.csv(file.path(data_dir, "exon_diff", "Exp1_NVSSM1_25nM_vs_DMSO.csv"))
+Ris    <- read.csv(file.path(data_dir, "exon_diff", "Exp1_Ris_655nM_vs_DMSO.csv"))
+U1CU    <- read.csv(file.path(data_dir, "exon_diff", "Exp3_U1CU_vs_U1wt.csv"))
+Candidates <- read.csv(file.path(data_dir, "exon_diff", "Candidates.csv"))
+```
+
+```{r}
+
+# Prepare datasets
+NVS <- NVS %>%
+  filter(included == "yes") %>%
+  select(ExonEndID, Exon1, Exon2, Exon3, Exon4) %>%
+  mutate(group = "NVS")
+
+Ris <- Ris %>%
+  filter(included == "yes") %>%
+  select(ExonEndID, Exon1, Exon2, Exon3, Exon4) %>%
+  mutate(group = "Risdiplam")
+
+Candidates <- Candidates %>%
+  select(ExonEndID, Exon1, Exon2, Exon3, Exon4) %>%
+  mutate(group = "Candidates")
+
+# Combine compound and candidate info
+df_all <- bind_rows(Candidates, NVS, Ris)
+
+
+# Combine compound and muational assay analysis
+NVS <- NVS %>%
+  dplyr::select (ExonEndID, Exon3, group)
+Ris <- Ris %>%
+  dplyr::select (ExonEndID, Exon3, group)
+U1CU <- U1CU %>%
+  filter(included == "yes") %>%
+  dplyr::select (ExonEndID, Exon3)
+
+U1CU$group <- "U1CU" 
+
+df_all_mut <- bind_rows(U1CU, NVS, Ris)
+df_all_mut
+
+```
+
+```{r}
+#function to plot nucleotide distribution at certain positions at the Exon end
+plot_prop <- function(data, fill_var, title, fill_label) {
+  ggplot(data, aes(x = group, fill = {{ fill_var }})) +
+    geom_bar(position = "fill", color = "black") +
+    scale_y_continuous(labels = percent_format()) +
+    labs(
+      x = "",
+      y = "Percentage",
+      fill = fill_label,
+      title = title
+    ) +
+    theme_classic(base_size = 14) +
+    theme(
+      plot.title = element_text(hjust = 0.5, face = "bold"),
+      axis.text = element_text(color = "black")
+    )
+}
+
+
+```
+
+```{r}
+df_allA <- df_all %>% filter(Exon1 == "A")
+plot_prop(df_allA, Exon2, "-2 position in A exons across datasets", "Position -4")
+
+df_allGA <- df_all %>% filter(Exon2 == "GA")
+plot_prop(df_allGA, Exon3, "-3 position in GA exons across datasets", "Position -3")
+
+df_allAGA <- df_all %>% filter(Exon3 == "AGA")
+plot_prop(df_allAGA, Exon4, "-4 position in AGA exons across datasets", "Position -4")
+
+df_allGGA <- df_all %>%
+  filter(Exon3 %in% c("TGA", "GGA")) %>%
+  mutate(pos4 = substr(Exon4, 1, 1))
+
+plot_prop(df_allGGA, pos4, "-4 position in UGA and GGA exons across datasets", "Position -4")
+
+
+#plotting -3 position in mutational assay
+df_all_mutGA <- df_all_mut %>% filter(Exon3 %in% c("TGA", "GGA", "CGA", "AGA"))
+plot_prop(df_all_mutGA, Exon3, "-3 position in GA exons across datasets", "Position -3")
+
+
+```
+

@@ -1,0 +1,40 @@
+
+```{r}
+library(readr)
+library(dplyr)
+library(ggplot2)
+
+data_dir <- Sys.getenv("MYDATA")
+
+U1GC <- readr::read_csv(file.path(data_dir, "exon_diff", "Exp5_U1GC_NVSSM1_vs_U1GC.csv"),
+                        show_col_types = FALSE)
+U1wt <- readr::read_csv(file.path(data_dir, "exon_diff", "Exp5_U1wt_NVSSM1_vs_U1wt.csv"),
+                        show_col_types = FALSE)
+```
+
+```{r}
+plot_df <- inner_join(
+  U1GC %>% select(ExonEndID, Exon3, delta_GC = altsplice_delta_psi),
+  U1wt %>% select(ExonEndID, delta_wt = altsplice_delta_psi),
+  by = "ExonEndID"
+) %>%
+  filter(Exon3 == "AGA")
+
+lims <- range(c(plot_df$delta_wt, plot_df$delta_GC), na.rm = TRUE)
+
+ggplot(plot_df, aes(x = delta_wt, y = delta_GC)) +
+  geom_vline(xintercept = 0, linetype = "dotted", color = "grey80", linewidth = 0.6) +
+  geom_hline(yintercept = 0, linetype = "dotted", color = "grey80", linewidth = 0.6) +
+  geom_point(alpha = 0.6, size = 1) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red", linewidth = 0.8) +
+  coord_equal(xlim = lims, ylim = lims) +
+  labs(
+    x = "U1wt + NVS-SM1: dPSI",
+    y = "U1GC + NVS-SM1: dPSI"
+  ) +
+  theme_classic()
+```
+
+
+
+

@@ -1,0 +1,103 @@
+```{r}
+library(dplyr)
+library(readr)
+library(ggplot2)
+library(tidyr)
+library(stringstatic)
+
+data_dir <- Sys.getenv("MYDATA")
+
+# Load NVS-SM1 datasets
+SM1_U1G6C7 <- read_csv(file.path(data_dir, "exon_diff", "Exp4_U1G6C7_NVSSM1_vs_U1wt.csv"))
+SM1_U1wt   <- read_csv(file.path(data_dir, "exon_diff", "Exp4_U1wt_NVSSM1_vs_U1wt.csv"))
+
+# Load Risdiplam datasets
+Ris_U1G6C7 <- read_csv(file.path(data_dir, "exon_diff", "Exp4_U1G6C7_Ris_vs_U1wt.csv"))
+Ris_U1wt   <- read_csv(file.path(data_dir, "exon_diff", "Exp4_U1wt_Ris_vs_U1wt.csv"))
+```
+
+Plot for NVS-SM1 (filtered for AGA exons)
+```{r}
+# Merge 
+merged1 <- SM1_U1G6C7 %>%
+  left_join(SM1_U1wt, by = "ExonEndID", suffix = c("_U1G6C7", "_U1wt")) %>%
+  filter(Exon3_U1G6C7 == "AGA") %>%
+  mutate(
+    altsplice_delta_psi_U1wt = replace_na(altsplice_delta_psi_U1wt, 0),
+    highlight_CG = substr(StartIntron_U1G6C7, 6,7) == "CG",
+    highlight_C_or_G = (substr(StartIntron_U1G6C7, 6, 6) == "C") |
+                       (substr(Exon3_U1G6C7, 7, 7) == "G"),
+    highlight_UA = substr(StartIntron_U1G6C7, 6,7) %in% c("TA", "TC")
+  )
+
+# Plot
+p <- ggplot(merged1, aes(x = altsplice_delta_psi_U1wt,
+                         y = altsplice_delta_psi_U1G6C7)) +
+  geom_point(color = "grey", alpha = 0.6) +
+  geom_point(data = subset(merged1, highlight_UA),
+             aes(color = "UA/UC at pos 6&7"), size = 2, alpha = 0.8) +
+  geom_point(data = subset(merged1, highlight_C_or_G),
+             aes(color = "C at pos 6 or G at pos 7"), size = 2, alpha = 0.8) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "lightgrey") +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "lightgrey") +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "lightgrey") +
+  scale_color_manual(
+    name = "Highlight",
+    values = c("UA/UC at pos 6&7" = "#d95f02",
+               "C at pos 6 or G at pos 7" = "#7570b3")
+  ) +
+  labs(
+    x = "ΔPSI U1wt + NVS-SM1",
+    y = "ΔPSI U1 G6C7 + NVS-SM1",
+    title = "AGA exons with pos 6&7 highlighted"
+  ) +
+  coord_fixed(ratio = 1) +
+  theme_classic()
+
+p
+
+
+```
+Plot for Risdiplam (filtered for GA ending exons)
+```{r}
+# Merge + annotate
+merged_ris <- Ris_U1G6C7 %>%
+  left_join(Ris_U1wt, by = "ExonEndID", suffix = c("_U1G6C7", "_U1wt")) %>%
+  dplyr::filter(str_ends(Exon3_U1G6C7, "GA")) %>%
+  mutate(
+    altsplice_delta_psi_U1wt = coalesce(altsplice_delta_psi_U1wt, 0),
+    highlight_CG = substr(StartIntron_U1G6C7, 6, 7) == "CG",
+    highlight_C_or_G = (substr(StartIntron_U1G6C7, 6, 6) == "C") |
+                       (substr(StartIntron_U1G6C7, 7, 7) == "G"),
+    highlight_UA = substr(StartIntron_U1G6C7, 6, 7) %in% c("TA", "TC")
+  )
+
+# Plot
+p <- ggplot(merged_ris, aes(x = altsplice_delta_psi_U1wt,
+                                y = altsplice_delta_psi_U1G6C7)) +
+  geom_point(color = "grey", alpha = 0.6) +
+  geom_point(data = subset(merged_ris, highlight_UA),
+             aes(color = "UA/UC at pos 6&7"), size = 2, alpha = 0.8) +
+  geom_point(data = subset(merged_ris, highlight_C_or_G),
+             aes(color = "C at pos 6 or G at pos 7"), size = 2, alpha = 0.8) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "lightgrey") +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "lightgrey") +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "lightgrey") +
+  scale_color_manual(
+    name = "Highlight",
+    values = c("UA/UC at pos 6&7" = "#d95f02",
+               "C at pos 6 or G at pos 7" = "#7570b3")
+  ) +
+  labs(
+    x = "ΔPSI U1wt + Risdiplam",
+    y = "ΔPSI U1 G6C7 + Risdiplam",
+    title = "GA exons with pos 6&7 highlighted"
+  ) +
+  coord_fixed(ratio = 1) +
+  theme_classic()
+
+p
+
+
+```
+

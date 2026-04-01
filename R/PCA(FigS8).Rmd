@@ -1,0 +1,100 @@
+
+```{r}
+#load packages
+library(dplyr)
+library(ggplot2)
+library(ggrepel)
+library(stringr)
+
+```
+
+```{r}
+
+# function to load pca data (one combined file per experiment)
+run_pca <- function(exp_id,
+                       data_dir = Sys.getenv("MYDATA"),
+                       top_n = 1000) {
+
+  message("Running PCA for ", exp_id)
+
+  # Load merged PSI file for experiment 1, 2, 3, ..
+  filepath <- file.path(data_dir, "psi_persample", paste0(exp_id, ".csv"))
+  df <- read.csv(filepath, stringsAsFactors = FALSE, check.names = FALSE)
+  rownames(df) <- make.unique(df$exonID)
+
+  df <- df %>% dplyr::select(-exonID)
+
+  experiment_cols <- grep(paste0("^", exp_id, "_"), colnames(df), value = TRUE)
+  psidata <- df[, experiment_cols, drop = FALSE]
+
+  # Variance + top exons
+  variances <- apply(psidata, 1, var, na.rm = TRUE)
+  variances <- variances[!is.na(variances)]
+
+  top <- names(sort(variances, decreasing = TRUE))[1:min(top_n, length(variances))]
+  psidata_top <- psidata[top, , drop = FALSE]
+
+  # PCA analysis
+  psidata_top_t <- t(psidata_top)
+  pca_res <- prcomp(psidata_top_t, scale. = TRUE)
+
+  # get the sample info
+  sample_info <- data.frame(
+    Sample = rownames(psidata_top_t),
+    Condition = gsub(paste0("^", exp_id, "_(.*)_PSI_R[0-9]+$"),
+                     "\\1", rownames(psidata_top_t)),
+    Replicate = gsub(".*_R([0-9]+)$", "R\\1", rownames(psidata_top_t))
+  )
+
+  pca_df <- data.frame(
+    PC1 = pca_res$x[, 1],
+    PC2 = pca_res$x[, 2],
+    Condition = sample_info$Condition,
+    Replicate = sample_info$Replicate
+  )
+
+  # Plot everything
+  p <- ggplot(pca_df, aes(x = PC1, y = PC2, color = Condition)) +
+    geom_point(size = 2, alpha = 0.8) +
+    geom_text_repel(aes(label = Replicate), size = 4, show.legend = FALSE) +
+    theme_minimal() +
+    labs(
+      title = paste0("PCA of exons, ", exp_id, " (", top_n, " most variable exons)"),
+      x = "PC1",
+      y = "PC2"
+    ) +
+    theme(plot.title = element_text(hjust = 0.5))
+
+  print(p)
+  invisible(p)
+}
+
+
+```
+
+```{r}
+
+#run analysis and plot per experiment
+run_pca("Exp1")
+```
+
+```{r}
+run_pca("Exp2")
+```
+
+```{r}
+run_pca("Exp3")
+```
+
+```{r}
+run_pca("Exp4")
+```
+
+```{r}
+run_pca("Exp5")
+
+```
+
+
+
+
