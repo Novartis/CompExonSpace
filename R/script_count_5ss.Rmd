@@ -1,0 +1,79 @@
+
+```{r}
+
+
+### input data examples ###
+## #input file example
+## > head(metaDatAga2)
+##           sample_alias                  junctionFile
+##  1   HeLa_DMSO+U1ag_R1 DB-61-WI27-star.SJ.out.tab.gz
+##  2   HeLa_DMSO+U1ag_R2 ZB-61-WL27-star.SJ.out.tab.gz
+##  3   HeLa_DMSO+U1ag_R3 VB-61-WP27-star.SJ.out.tab.gz
+##  4 HeLa_LMI070+U1ag_R3 RB-61-WT27-star.SJ.out.tab.gz
+##  5 HeLa_LMI070+U1ag_R1 NB-61-WX27-star.SJ.out.tab.gz
+##  6 HeLa_LMI070+U1ag_R2 JB-62-WB27-star.SJ.out.tab.gz
+
+## # input example with all possible 5'ss
+## > head(newDJE2)
+## GRanges object with 6 ranges and 4 metadata columns:
+##              seqnames    ranges strand |   gene_name    inGtex intronStart     exonEnd
+##                 <Rle> <IRanges>  <Rle> | <character> <numeric> <character> <character>
+##   1:492077:+        1    492077      + |        none         1    GTCTCCAG        GGGA
+##   1:492149:+        1    492149      + |        none         1    GTGCGATC        CCGA
+##   1:523028:+        1    523028      + |        none         1    GTCGAGGC        AGGA
+##   1:632552:+        1    632552      + |    MTCO1P12         1    GTGACTAT        TGGA
+##   1:727152:+        1    727152      + |        none         1    GTGCGATC        CCGA
+##   1:850612:+        1    850612      + |   LINC01128         1    GTTAGTGA        TTGA
+##   -------
+##   seqinfo: 25 sequences from an unspecified genome; no seqlengths
+
+
+countStuff <- function( metaDat, candidatesToConsider ){
+    rownames(metaDat) <- metaDat$sample_alias
+    allCounts <- lapply( rownames(metaDat), function(samp){
+        ## reading junction data ##
+        juncData <- parseJunctionFile(metaDat[samp,"junctionFile"])
+        juncData <- juncData[strand(juncData) != "*"]
+        junctionStart <- flank( juncData, -1 )
+        exonStart <- flank(candidatesToConsider, 1)
+        junctionStart <- flank( juncData, -1 )
+        exonEnd <- flank( candidatesToConsider, 1, start=FALSE )
+        endOvl <- findOverlaps( exonEnd, junctionStart, type="equal" )
+        endOvl <- ovlToDF( endOvl, candidatesToConsider, juncData, type="end" )
+        ovlSkip <- findOverlaps( candidatesToConsider, juncData, type="within" )
+        ovlSkip <- ovlToDF( ovlSkip, candidatesToConsider, juncData, type="skip" )
+        endOvl$junctionCoordEnd <- as.character(flank( GRanges( endOvl$junctionCoord ), -1, start=FALSE ))
+        ovlSkip$junctionCoordEnd <- as.character(flank( GRanges( ovlSkip$junctionCoord ), -1, start=FALSE ))
+        endOvl <- endOvl |>
+            dplyr::group_by( exonCoords, junctionCoordEnd ) |>
+            dplyr::summarize( counts=sum(counts) ) |>
+            dplyr::rename( inclusion=counts )
+        ovlSkip <- ovlSkip |>
+            dplyr::group_by( exonCoords, junctionCoordEnd ) |>
+            dplyr::summarize( counts=sum(counts) ) |>
+            dplyr::rename( exclusion=counts )
+        allCounts <- dplyr::full_join( endOvl, ovlSkip ) |>
+            dplyr::mutate(dplyr::across(dplyr::where(is.numeric), ~tidyr::replace_na(.x, 0)))
+        allCounts <- allCounts |>
+            dplyr::group_by( exonCoords ) |>
+            dplyr::summarize( inclusion=sum(inclusion), exclusion=sum(exclusion) )
+        allCounts$psi <- allCounts$inclusion / (allCounts$inclusion + allCounts$exclusion)
+        allCounts$sample <- samp
+        allCounts
+    })
+    allCounts <- dplyr::bind_rows( allCounts )
+    allCounts <- allCounts |>
+        dplyr::left_join(
+                   data.frame(
+                       exonCoords=names(candidatesToConsider),
+                       exonEnd=candidatesToConsider$exonEnd,
+                       intronStart=candidatesToConsider$intronStart))
+    allCounts
+}
+
+
+allCountsAga <- countStuff( metaDatAga2, newDJE2 )
+write.table( allCountsAga, file="counts_aga5ss.txt", row.names=FALSE, col.names=TRUE, quote=FALSE, sep="\t" )
+
+```
+  
